@@ -1,0 +1,36 @@
+name: lm-meter-infer
+channels:
+  - mlc-ai/label/nightly
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  # Scientific computing stack
+  - numpy>=1.24
+  - pandas>=2.0
+  - matplotlib>=3.7
+  - scipy>=1.11
+  # Jupyter
+  - jupyter
+  - jupyterlab
+  - ipywidgets
+  - nbconvert
+  # Utilities
+  - tqdm
+  - pyyaml
+  - colorama
+  - tabulate
+  # Android tools
+  - adb
+  - pip:
+    # MLC LLM inference engine (phase-level profiling)
+    - mlc-llm-nightly-cu122
+    # TVM runtime
+    - mlc-ai-nightly-cu122
+    # Data analysis
+    - plotly>=5.0
+    - kaleido
+    # Log parsing
+    - parse
+    - regex
