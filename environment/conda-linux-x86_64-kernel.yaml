@@ -1,0 +1,42 @@
+name: lm-meter-kernel
+channels:
+  - mlc-ai/label/nightly
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  # Scientific computing stack
+  - numpy>=1.24
+  - pandas>=2.0
+  - matplotlib>=3.7
+  - scipy>=1.11
+  # Jupyter
+  - jupyter
+  - jupyterlab
+  - ipywidgets
+  - nbconvert
+  # OpenCL / GPU profiling support
+  - ocl-icd-system
+  # Utilities
+  - tqdm
+  - pyyaml
+  - colorama
+  - tabulate
+  # Perfetto trace parsing
+  - protobuf
+  # Android tools
+  - adb
+  - pip:
+    # MLC LLM inference engine (kernel-level profiling)
+    - mlc-llm-nightly-cu122
+    # TVM runtime with OpenCL
+    - mlc-ai-nightly-cu122
+    # Perfetto trace processing
+    - perfetto
+    # Data analysis
+    - plotly>=5.0
+    - kaleido
+    # Log parsing
+    - parse
+    - regex

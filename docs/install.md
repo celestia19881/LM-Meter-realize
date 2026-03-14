@@ -118,7 +118,21 @@ conda activate lm-meter-infer      # For phase-level profiling
 conda activate melt-reproduce      # For melting point profiling
 ```
 If your host machine is Linux or MacOS with Intel chipsets:
-> ⏳ Coming soon — we are preparing explicit environment files for these platforms.
+
+```bash
+cd environment/
+# Kernel-level profiling
+conda env create -f conda-linux-x86_64-kernel.yaml
+# Phase-level profiling
+conda env create -f conda-linux-x86_64-infer.yaml
+```
+
+Then activate the environment that matches your research purpose:
+
+```bash
+conda activate lm-meter-kernel     # For kernel-level profiling
+conda activate lm-meter-infer      # For phase-level profiling
+```
 
 ## C. Build LM-Meter from Source 
 We created automated build scripts that streamline the compilation process and ensure reproducibility. All scripts are located in `\script` and `\script\build_util`. Before running any build, make sure to activate the corresponding conda environment.
@@ -142,3 +156,182 @@ chmod +x ./build_all_e2e_melt_reproduce.sh # First-time setup only
 ./build_all_e2e_melt_reproduce.sh
 ```
 > ⚡ **Note**: Builds may take 20 minutes or more depending on your platform and hardware. Before running any build script, ensure that an Android device is connected to your host machine via `adb`, as the final build step will automatically deploy and install the generated APK on the device.
+
+## D. Linux Server Setup
+
+> This section provides a complete guide for reproducing LM-Meter on a **remote Linux server** (Ubuntu 20.04 / 22.04 recommended). The Linux host machine communicates with an Android target device over ADB.
+
+### a. System Requirements
+
+Ensure your Linux server meets the following requirements:
+
+| Requirement | Version |
+|---|---|
+| OS | Ubuntu 20.04 / 22.04 LTS |
+| Python | 3.10 (managed by Conda) |
+| Java | 17 |
+| Rust | 1.75.0 |
+| Android NDK | 27.0.11718014 |
+| ADB | Latest |
+
+You can run the automated setup script to install all dependencies at once:
+
+```bash
+chmod +x scripts/setup_linux.sh
+bash scripts/setup_linux.sh
+```
+
+Or follow the manual steps below.
+
+### b. Install System Packages
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+    curl wget git build-essential \
+    openjdk-17-jdk \
+    adb \
+    unzip zip \
+    libssl-dev pkg-config \
+    python3-dev
+```
+
+Verify Java 17:
+
+```bash
+java -version
+# Should report: openjdk version "17.x.x"
+```
+
+Set `JAVA_HOME` in `~/.bashrc`:
+
+```bash
+echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> ~/.bashrc
+echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### c. Install Rust 1.75.0
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+rustup toolchain install 1.75.0
+rustup default 1.75.0
+rustup target add --toolchain 1.75.0 aarch64-linux-android
+rustup override set 1.75.0
+```
+
+Append to `~/.bashrc`:
+
+```bash
+cat >> ~/.bashrc << 'EOF'
+source "$HOME/.cargo/env"
+if [ -f "$HOME/.cargo/env" ]; then
+  . "$HOME/.cargo/env"
+else
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
+export RUSTUP_TOOLCHAIN=1.75.0
+EOF
+source ~/.bashrc
+```
+
+Verify:
+
+```bash
+rustc --version  # should report rustc 1.75.0
+cargo --version  # should report cargo 1.75.0
+```
+
+### d. Install Android SDK and NDK (headless)
+
+```bash
+# Create SDK directory
+mkdir -p ~/android-sdk/cmdline-tools
+
+# Download Android command-line tools
+wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+    -O /tmp/cmdline-tools.zip
+unzip -q /tmp/cmdline-tools.zip -d ~/android-sdk/cmdline-tools
+mv ~/android-sdk/cmdline-tools/cmdline-tools ~/android-sdk/cmdline-tools/latest
+
+# Set environment variables
+cat >> ~/.bashrc << 'EOF'
+export ANDROID_HOME=$HOME/android-sdk
+export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+EOF
+source ~/.bashrc
+
+# Accept licenses and install NDK
+yes | sdkmanager --licenses
+sdkmanager "platform-tools" "ndk;27.0.11718014"
+
+# Set NDK environment variable
+cat >> ~/.bashrc << 'EOF'
+export ANDROID_NDK=$HOME/android-sdk/ndk/27.0.11718014
+export TVM_NDK_CC=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang
+EOF
+source ~/.bashrc
+```
+
+### e. Install Miniconda
+
+```bash
+wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    -O /tmp/miniconda.sh
+bash /tmp/miniconda.sh -b -p ~/miniconda3
+~/miniconda3/bin/conda init bash
+source ~/.bashrc
+```
+
+### f. Create Conda Environments (Linux)
+
+```bash
+conda config --add channels conda-forge
+conda config --set channel_priority flexible
+
+cd environment/
+conda env create -f conda-linux-x86_64-kernel.yaml   # Kernel-level profiling
+conda env create -f conda-linux-x86_64-infer.yaml    # Phase-level profiling
+```
+
+### g. Connect Android Device via ADB
+
+Enable **USB Debugging** on your Android device (Settings → Developer Options → USB Debugging), connect it to the Linux server, then verify:
+
+```bash
+adb devices
+# Should list your device, e.g.:
+# List of devices attached
+# emulator-5554  device
+```
+
+For remote/wireless ADB (if the device is not physically connected):
+
+```bash
+# On the Android device: enable wireless ADB (Android 11+)
+adb tcpip 5555
+adb connect <DEVICE_IP>:5555
+adb devices
+```
+
+### h. Build and Deploy LM-Meter on Linux
+
+Activate the appropriate conda environment and run the build script:
+
+```bash
+# Phase-level profiling
+conda activate lm-meter-infer
+cd scripts/
+chmod +x ./build_all_e2e_pure.sh
+./build_all_e2e_pure.sh
+
+# Kernel-level profiling
+conda activate lm-meter-kernel
+chmod +x ./build_all_e2e_plus_opencl_kernel.sh
+./build_all_e2e_plus_opencl_kernel.sh
+```
+
+> ⚡ **Note**: Build times can exceed 20 minutes. An Android device must be connected via `adb` before running build scripts, as the final step automatically installs the APK on the device.

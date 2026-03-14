@@ -221,9 +221,32 @@ To quantify **LM-Meter**’s profiling overhead, we evaluate its impact on throu
 Even under the **Powersave** configuration, where system resources are most constrained, **LM-Meter** exhibits only a modest throughput reduction of **2.58 %** during prefill and **0.99 %** during decode. 
 
 ## 🚀 Getting Started
-- [Installation](docs/install.md) 
+- [Installation](docs/install.md) – macOS & **Linux server** setup
 - [Run and Eval](docs/eval.md)
+- [Data Collection](docs/data-collection.md)
+- [Post-Processing Notebook](test/quick_start.ipynb)
 - [Troubleshooting Tips](docs/common-errors.md)
+
+### Linux server quick setup
+
+```bash
+# Clone this repo
+git clone https://github.com/celestia19881/LM-Meter-realize.git && cd LM-Meter-realize
+
+# One-shot automated setup (installs Java 17, Rust 1.75.0, Android NDK, Conda)
+chmod +x scripts/setup_linux.sh
+bash scripts/setup_linux.sh
+
+# Reload shell, then activate a conda environment
+source ~/.bashrc
+conda activate lm-meter-infer
+
+# Connect Android device and collect data
+bash scripts/data_relavant/option2_stream_logcats_and_pull_traces.sh
+
+# Analyse results
+jupyter lab test/quick_start.ipynb
+```
 
 ## 📬 Contact
 
